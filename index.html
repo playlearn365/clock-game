@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>認識時鐘小遊戲</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -251,6 +252,35 @@ window.addEventListener('touchmove', onMove, {passive:false});
 window.addEventListener('mouseup', onEnd);
 window.addEventListener('touchend', onEnd);
 
+// 音效：Tone.js 木琴音色
+function playCorrect() {
+  try {
+    Tone.start();
+    const synth = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.005, decay: 0.3, sustain: 0.05, release: 0.4 }
+    }).toDestination();
+    const now = Tone.now();
+    ['C5','E5','G5','C6'].forEach((note, i) => {
+      synth.triggerAttackRelease(note, '16n', now + i * 0.13);
+    });
+  } catch(e) {}
+}
+
+function playWrong() {
+  try {
+    Tone.start();
+    const synth = new Tone.Synth({
+      oscillator: { type: 'triangle' },
+      envelope: { attack: 0.005, decay: 0.4, sustain: 0.05, release: 0.3 }
+    }).toDestination();
+    const now = Tone.now();
+    ['G3','D3'].forEach((note, i) => {
+      synth.triggerAttackRelease(note, '8n', now + i * 0.22);
+    });
+  } catch(e) {}
+}
+
 function checkAnswer() {
   if (answered) return;
   answered = true;
@@ -266,11 +296,13 @@ function checkAnswer() {
     document.getElementById('correct').textContent = correct;
     fb.style.color='#0F6E56';
     fb.textContent='🎉 答對了！好棒！';
+    playCorrect();
   } else {
     fb.style.color='#993C1D';
     fb.textContent='再試試！正確答案是 '+(targetH%12||12)+':'+String(targetM).padStart(2,'0');
     hourAngle = targetHourAngle(targetH, targetM);
     minAngle = targetMinAngle(targetM);
+    playWrong();
   }
   draw();
 }
