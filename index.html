@@ -1,331 +1,314 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>認識時鐘小遊戲</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>認識時間遊戲</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f5f4f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f5f0;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 1rem;
     }
-    #app {
-      background: #fff;
-      border-radius: 20px;
-      padding: 1.5rem 1.25rem 2rem;
-      width: 340px;
-      max-width: 95vw;
-      text-align: center;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      user-select: none;
-      -webkit-user-select: none;
-    }
-    h1 {
-      font-size: 20px;
-      font-weight: 600;
-      color: #3C3489;
-      margin-bottom: 1rem;
-      letter-spacing: 0.02em;
-    }
-    #question-box {
-      font-size: 22px;
-      font-weight: 500;
-      color: #2c2c2a;
-      margin-bottom: 0.4rem;
-      min-height: 36px;
-    }
-    #target-time { color: #3C3489; }
-    #score-box {
-      font-size: 14px;
-      color: #888780;
-      margin-bottom: 0.75rem;
-    }
-    #clock-wrap {
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 2rem 2rem 2.5rem;
+      max-width: 420px;
+      width: 100%;
       display: flex;
-      justify-content: center;
-      margin-bottom: 0.5rem;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
     }
-    canvas { touch-action: none; cursor: grab; border-radius: 50%; }
-    #hint {
-      font-size: 13px;
-      color: #888780;
-      margin-bottom: 0.75rem;
-      line-height: 1.6;
+    h1 { font-size: 22px; font-weight: 600; color: #222; letter-spacing: 1px; }
+    .score-bar { display: flex; gap: 24px; font-size: 14px; color: #888; }
+    .score-val { font-weight: 600; color: #333; }
+    .level-row {
+      display: flex; gap: 6px; align-items: center;
+      font-size: 13px; color: #888; flex-wrap: wrap; justify-content: center;
     }
-    .h-label { color: #D85A30; font-weight: 600; }
-    .m-label { color: #185FA5; font-weight: 600; }
-    #feedback {
-      font-size: 18px;
-      font-weight: 500;
-      min-height: 28px;
-      margin-bottom: 0.75rem;
+    .lbtn {
+      padding: 8px 16px; font-size: 13px; border-radius: 20px;
+      border: 2px solid; cursor: pointer; font-weight: 600; transition: all 0.15s;
     }
-    .btn-row { display: flex; justify-content: center; gap: 10px; }
-    .btn {
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 500;
-      padding: 10px 22px;
-      border-radius: 10px;
-      border: 1.5px solid #d3d1c7;
-      background: #fff;
-      color: #2c2c2a;
-      cursor: pointer;
-      transition: background 0.12s, transform 0.1s;
+    .question { font-size: 20px; font-weight: 600; color: #222; text-align: center; }
+    .options { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .obtn {
+      padding: 10px 22px; font-size: 17px; border-radius: 10px;
+      border: 1.5px solid #ddd; background: white; color: #333;
+      cursor: pointer; min-width: 88px; font-weight: 500; transition: background 0.1s;
     }
-    .btn:active { transform: scale(0.97); background: #f1efe8; }
-    #check-btn {
-      background: #3C3489;
-      color: #fff;
-      border-color: #3C3489;
+    .obtn:hover { background: #f0f0f0; }
+    .obtn.correct { background: #EAF3DE; color: #3B6D11; border-color: #639922; }
+    .obtn.wrong   { background: #FCEBEB; color: #A32D2D; border-color: #E24B4A; }
+    .feedback-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; min-height: 40px; width: 100%;
     }
-    #check-btn:active { background: #26215C; }
+    .feedback { font-size: 18px; font-weight: 600; }
+    .nextbtn {
+      display: none; padding: 8px 20px; font-size: 15px; border-radius: 10px;
+      border: 1.5px solid #ccc; background: #f5f5f5; color: #333;
+      cursor: pointer; font-weight: 500; white-space: nowrap; transition: background 0.1s;
+    }
+    .nextbtn:hover { background: #e8e8e8; }
+    .nextbtn.show { display: inline-block; }
+
+    /* 音效解鎖提示 */
+    .sound-tip {
+      font-size: 12px; color: #aaa; text-align: center;
+    }
   </style>
 </head>
 <body>
-<div id="app">
-  <h1>🕐 我會撥時鐘</h1>
-  <div id="question-box">請把時鐘撥到 <span id="target-time"></span></div>
-  <div id="score-box">答對：<span id="correct">0</span> 題 &nbsp;|&nbsp; 共 <span id="total">0</span> 題</div>
-  <div id="clock-wrap">
-    <canvas id="clock" width="300" height="300"></canvas>
+<div class="card">
+  <h1>🕐 認識時間</h1>
+  <div class="score-bar">
+    <span>答對 <span class="score-val" id="cc">0</span></span>
+    <span>共答 <span class="score-val" id="tc">0</span> 題</span>
   </div>
-  <div id="hint">
-    抓住 <span class="h-label">● 短針尖端</span> 或 <span class="m-label">● 長針尖端</span> 拖曳
+  <div class="level-row">
+    難度：
+    <button class="lbtn" id="btn1" onclick="setLevel(1,this)">整點</button>
+    <button class="lbtn" id="btn2" onclick="setLevel(2,this)">半點</button>
+    <button class="lbtn" id="btn3" onclick="setLevel(3,this)">每5分</button>
+    <button class="lbtn" id="btn4" onclick="setLevel(4,this)">綜合</button>
+    <button class="lbtn" id="btn5" onclick="setLevel(5,this)">無提示</button>
   </div>
-  <div id="feedback"></div>
-  <div class="btn-row">
-    <button class="btn" id="check-btn" onclick="checkAnswer()">✓ 確認答案</button>
-    <button class="btn" onclick="newQuestion()">下一題 →</button>
+  <canvas id="clock" width="300" height="300"></canvas>
+  <div class="question" id="qtxt">這個時鐘顯示幾點幾分？</div>
+  <div class="options" id="opts"></div>
+  <div class="feedback-row">
+    <div class="feedback" id="fb"></div>
+    <button class="nextbtn" id="nxtbtn" onclick="nextQ()">下一題 →</button>
   </div>
+  <div class="sound-tip" id="sound-tip">🔇 點選答案後即可啟用音效</div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 <script>
-const canvas = document.getElementById('clock');
-const ctx = canvas.getContext('2d');
-const W = 300, CX = 150, CY = 150, R = 130;
-const H_LEN = 72, M_LEN = 105, GRAB_R = 36;
+let level=1, cc=0, tc=0, answered=false, curH, curM;
+let audioUnlocked = false;
 
-let hourAngle = 90;
-let minAngle = 0;
-let hourAngleFree = 90;
-let minAngleFree = 0;
-let targetH = 3, targetM = 0;
-let dragging = null;
-let correct = 0, total = 0;
-let answered = false;
+/* ── 音效 ── */
+let correctSynth, wrongSynth;
 
-function d2r(d) { return d * Math.PI / 180; }
-function tipXY(angleDeg, len) {
-  const r = d2r(angleDeg - 90);
-  return [CX + len * Math.cos(r), CY + len * Math.sin(r)];
-}
-function dist(x1,y1,x2,y2) { return Math.hypot(x1-x2,y1-y2); }
-function getAngleDeg(x,y) {
-  let a = Math.atan2(y-CY,x-CX)*180/Math.PI+90;
-  return ((a%360)+360)%360;
-}
-function snapTo(angle, step) {
-  let s = Math.round(angle/step)*step;
-  return ((s%360)+360)%360;
-}
-function dispH() { return dragging==='h' ? hourAngleFree : hourAngle; }
-function dispM() { return dragging==='m' ? minAngleFree : minAngle; }
+function initSynths() {
+  if (correctSynth) return; // 已初始化就不重建
+  correctSynth = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.005, decay: 0.25, sustain: 0.05, release: 0.4 },
+    volume: -4
+  }).toDestination();
 
-function angleToHM(a) {
-  let snap = Math.round(((a%360)+360)%360 / 15) % 24;
-  let hour = Math.floor(snap/2);
-  let isHalf = snap % 2 === 1;
-  return { h: hour===0?12:hour, m: isHalf?30:0 };
-}
-function angleToMin(a) {
-  let snap = Math.round(((a%360)+360)%360 / 30) % 12;
-  return snap * 5;
-}
-function targetHourAngle(h, m) {
-  return ((h%12)*30 + (m===30?15:0));
-}
-function targetMinAngle(m) { return m*6; }
-
-function draw() {
-  ctx.clearRect(0,0,W,W);
-  ctx.setLineDash([]);
-
-  ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2);
-  ctx.fillStyle='#FAFAF8'; ctx.fill();
-  ctx.strokeStyle='#3C3489'; ctx.lineWidth=5; ctx.stroke();
-
-  for (let i=1;i<=12;i++) {
-    const a = d2r((i/12)*360-90);
-    ctx.beginPath();
-    ctx.moveTo(CX+(R-1)*Math.cos(a), CY+(R-1)*Math.sin(a));
-    ctx.lineTo(CX+(R-11)*Math.cos(a), CY+(R-11)*Math.sin(a));
-    ctx.strokeStyle='#888780'; ctx.lineWidth=2; ctx.stroke();
-    ctx.fillStyle='#3C3489'; ctx.font='600 18px -apple-system, sans-serif';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(i, CX+(R-25)*Math.cos(a), CY+(R-25)*Math.sin(a));
-  }
-  for (let i=0;i<60;i++) {
-    if (i%5===0) continue;
-    const a = d2r((i/60)*360-90);
-    ctx.beginPath();
-    ctx.moveTo(CX+(R-1)*Math.cos(a), CY+(R-1)*Math.sin(a));
-    ctx.lineTo(CX+(R-6)*Math.cos(a), CY+(R-6)*Math.sin(a));
-    ctx.strokeStyle='#B4B2A9'; ctx.lineWidth=1; ctx.stroke();
-  }
-
-  // 分針
-  const mA = dispM();
-  const mrad = d2r(mA-90);
-  const [mTx,mTy] = tipXY(mA, M_LEN);
-  ctx.beginPath();
-  ctx.moveTo(CX-24*Math.cos(mrad), CY-24*Math.sin(mrad));
-  ctx.lineTo(mTx, mTy);
-  ctx.strokeStyle='#185FA5'; ctx.lineWidth=5; ctx.lineCap='round'; ctx.stroke();
-
-  // 時針
-  const hA = dispH();
-  const hrad = d2r(hA-90);
-  const [hTx,hTy] = tipXY(hA, H_LEN);
-  ctx.beginPath();
-  ctx.moveTo(CX-20*Math.cos(hrad), CY-20*Math.sin(hrad));
-  ctx.lineTo(hTx, hTy);
-  ctx.strokeStyle='#D85A30'; ctx.lineWidth=8; ctx.lineCap='round'; ctx.stroke();
-
-  ctx.beginPath(); ctx.arc(CX,CY,8,0,Math.PI*2); ctx.fillStyle='#3C3489'; ctx.fill();
-  ctx.beginPath(); ctx.arc(CX,CY,3,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
-
-  ctx.beginPath(); ctx.arc(hTx,hTy,11,0,Math.PI*2);
-  ctx.fillStyle = dragging==='h' ? '#D85A30' : 'rgba(216,90,48,0.3)'; ctx.fill();
-  ctx.beginPath(); ctx.arc(mTx,mTy,11,0,Math.PI*2);
-  ctx.fillStyle = dragging==='m' ? '#185FA5' : 'rgba(24,95,165,0.3)'; ctx.fill();
+  wrongSynth = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.5 },
+    volume: -6
+  }).toDestination();
 }
 
-function getXY(e) {
-  const rect = canvas.getBoundingClientRect();
-  const scale = W/rect.width;
-  const src = e.touches ? e.touches[0] : e;
-  return [(src.clientX-rect.left)*scale, (src.clientY-rect.top)*scale];
-}
-
-function onStart(e) {
-  e.preventDefault();
-  const [x,y] = getXY(e);
-  const [hTx,hTy] = tipXY(dispH(), H_LEN);
-  const [mTx,mTy] = tipXY(dispM(), M_LEN);
-  const hd = dist(x,y,hTx,hTy);
-  const md = dist(x,y,mTx,mTy);
-  if (hd > GRAB_R && md > GRAB_R) return;
-  dragging = hd <= md ? 'h' : 'm';
-  if (dragging==='h') hourAngleFree = hourAngle;
-  if (dragging==='m') minAngleFree = minAngle;
-  draw();
-}
-
-function onMove(e) {
-  if (!dragging) return;
-  e.preventDefault();
-  const [x,y] = getXY(e);
-  const ang = getAngleDeg(x,y);
-  if (dragging==='h') hourAngleFree = ang;
-  else minAngleFree = ang;
-  draw();
-}
-
-function onEnd() {
-  if (dragging==='h') hourAngle = snapTo(hourAngleFree, 15);
-  if (dragging==='m') minAngle = snapTo(minAngleFree, 30);
-  dragging = null;
-  draw();
-}
-
-canvas.addEventListener('mousedown', onStart);
-canvas.addEventListener('touchstart', onStart, {passive:false});
-window.addEventListener('mousemove', onMove);
-window.addEventListener('touchmove', onMove, {passive:false});
-window.addEventListener('mouseup', onEnd);
-window.addEventListener('touchend', onEnd);
-
-// 音效：Tone.js 木琴音色
-function playCorrect() {
+async function unlockAudio() {
+  if (audioUnlocked) return;
   try {
-    Tone.start();
-    const synth = new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.005, decay: 0.3, sustain: 0.05, release: 0.4 }
-    }).toDestination();
+    await Tone.start(); // 必須在使用者手勢內呼叫
+    initSynths();
+    audioUnlocked = true;
+    document.getElementById('sound-tip').textContent = '🔊 音效已開啟';
+    setTimeout(() => {
+      document.getElementById('sound-tip').style.display = 'none';
+    }, 1500);
+  } catch(e) {
+    console.warn('音效啟動失敗', e);
+  }
+}
+
+async function playCorrect() {
+  if (!audioUnlocked) return;
+  try {
     const now = Tone.now();
-    ['C5','E5','G5','C6'].forEach((note, i) => {
-      synth.triggerAttackRelease(note, '16n', now + i * 0.13);
+    [['C5',0],['E5',0.13],['G5',0.26],['C6',0.39]].forEach(([note, t]) => {
+      correctSynth.triggerAttackRelease(note, '16n', now + t);
     });
   } catch(e) {}
 }
 
-function playWrong() {
+async function playWrong() {
+  if (!audioUnlocked) return;
   try {
-    Tone.start();
-    const synth = new Tone.Synth({
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.005, decay: 0.4, sustain: 0.05, release: 0.3 }
-    }).toDestination();
     const now = Tone.now();
-    ['G3','D3'].forEach((note, i) => {
-      synth.triggerAttackRelease(note, '8n', now + i * 0.22);
+    [['G3',0],['E3',0.22]].forEach(([note, t]) => {
+      wrongSynth.triggerAttackRelease(note, '8n', now + t);
     });
   } catch(e) {}
 }
 
-function checkAnswer() {
-  if (answered) return;
-  answered = true;
-  total++;
-  document.getElementById('total').textContent = total;
-  const fb = document.getElementById('feedback');
-  const {h: userH, m: userHM} = angleToHM(hourAngle);
-  const userM = angleToMin(minAngle);
-  const hOk = userH === targetH && userHM === targetM;
-  const mOk = userM === targetM;
-  if (hOk && mOk) {
-    correct++;
-    document.getElementById('correct').textContent = correct;
-    fb.style.color='#0F6E56';
-    fb.textContent='🎉 答對了！好棒！';
+/* ── 難度按鈕顏色 ── */
+const COLORS={
+  1:{bg:'#639922',border:'#639922',text:'white',offBg:'#EAF3DE',offBorder:'#639922',offText:'#3B6D11'},
+  2:{bg:'#378ADD',border:'#378ADD',text:'white',offBg:'#E6F1FB',offBorder:'#378ADD',offText:'#185FA5'},
+  3:{bg:'#EF9F27',border:'#EF9F27',text:'white',offBg:'#FAEEDA',offBorder:'#EF9F27',offText:'#854F0B'},
+  4:{bg:'#D4537E',border:'#D4537E',text:'white',offBg:'#FBEAF0',offBorder:'#D4537E',offText:'#993556'},
+  5:{bg:'#534AB7',border:'#534AB7',text:'white',offBg:'#EEEDFE',offBorder:'#534AB7',offText:'#534AB7'},
+};
+
+function applyBtnStyles(activeLevel){
+  [1,2,3,4,5].forEach(i=>{
+    const btn=document.getElementById('btn'+i);
+    const c=COLORS[i];
+    if(i===activeLevel){
+      btn.style.background=c.bg; btn.style.borderColor=c.border; btn.style.color=c.text;
+    } else {
+      btn.style.background=c.offBg; btn.style.borderColor=c.offBorder; btn.style.color=c.offText;
+    }
+  });
+}
+
+function setLevel(l, btn){
+  unlockAudio(); // 切難度時也解鎖
+  level=l; applyBtnStyles(l); nextQ();
+}
+
+/* ── 畫鐘 ── */
+function drawClock(h,m){
+  const canvas=document.getElementById('clock');
+  const ctx=canvas.getContext('2d');
+  const cx=150,cy=150,R=140;
+  ctx.clearRect(0,0,300,300);
+
+  ctx.beginPath();ctx.arc(cx,cy,R,0,2*Math.PI);
+  ctx.fillStyle='white';ctx.fill();
+  ctx.strokeStyle='#ccc';ctx.lineWidth=1;ctx.stroke();
+
+  ctx.beginPath();ctx.arc(cx,cy,R-6,0,2*Math.PI);
+  ctx.strokeStyle='#7F77DD';ctx.lineWidth=3.5;ctx.stroke();
+
+  const showOuter=(level!==5);
+  if(showOuter){
+    for(let i=0;i<60;i++){
+      const ang=(i*6-90)*Math.PI/180;
+      const isMajor=(i%5===0);
+      const r=isMajor?122:127;
+      const x=cx+Math.cos(ang)*r, y=cy+Math.sin(ang)*r;
+      ctx.save();ctx.translate(x,y);
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      if(isMajor){ctx.font='bold 12px sans-serif';ctx.fillStyle='#cc0000';}
+      else{ctx.font='8px sans-serif';ctx.fillStyle='#444';}
+      ctx.fillText(i,0,0);ctx.restore();
+    }
+  }
+
+  for(let i=0;i<60;i++){
+    const ang=(i*6-90)*Math.PI/180;
+    const major=(i%5===0);
+    const r1=showOuter?112:133;
+    const r2=major?(showOuter?100:121):(showOuter?106:128);
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(ang)*r1,cy+Math.sin(ang)*r1);
+    ctx.lineTo(cx+Math.cos(ang)*r2,cy+Math.sin(ang)*r2);
+    ctx.strokeStyle=major?'#555':'#bbb';
+    ctx.lineWidth=major?2.5:1;ctx.stroke();
+  }
+
+  for(let n=1;n<=12;n++){
+    const ang=(n*30-90)*Math.PI/180;
+    const r=showOuter?78:90;
+    const x=cx+Math.cos(ang)*r, y=cy+Math.sin(ang)*r;
+    ctx.font=(showOuter?'22':'26')+'px sans-serif';
+    ctx.fillStyle='#333';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n,x,y);
+  }
+
+  const hAng=((h%12)*30+m*0.5-90)*Math.PI/180;
+  ctx.beginPath();
+  ctx.moveTo(cx+Math.cos(hAng+Math.PI)*15,cy+Math.sin(hAng+Math.PI)*15);
+  ctx.lineTo(cx+Math.cos(hAng)*65,cy+Math.sin(hAng)*65);
+  ctx.strokeStyle='#cc2200';ctx.lineWidth=7;ctx.lineCap='round';ctx.stroke();
+
+  const mAng=(m*6-90)*Math.PI/180;
+  ctx.beginPath();
+  ctx.moveTo(cx+Math.cos(mAng+Math.PI)*18,cy+Math.sin(mAng+Math.PI)*18);
+  ctx.lineTo(cx+Math.cos(mAng)*100,cy+Math.sin(mAng)*100);
+  ctx.strokeStyle='#1a3ccc';ctx.lineWidth=7;ctx.lineCap='round';ctx.stroke();
+
+  ctx.beginPath();ctx.arc(cx,cy,8,0,2*Math.PI);
+  ctx.fillStyle='#e6c000';ctx.fill();
+  ctx.strokeStyle='white';ctx.lineWidth=2.5;ctx.stroke();
+}
+
+/* ── 題目邏輯 ── */
+function randTime(){
+  const h=Math.floor(Math.random()*12)+1;
+  let m;
+  if(level===1) m=0;
+  else if(level===2) m=30;
+  else if(level===3){const o=[5,10,15,20,25,35,40,45,50,55];m=o[Math.floor(Math.random()*o.length)];}
+  else{const o=[0,5,10,15,20,25,30,35,40,45,50,55];m=o[Math.floor(Math.random()*o.length)];}
+  return{h,m};
+}
+
+function fmt(h,m){return h+':'+(m<10?'0'+m:m);}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+function genWrongs(h,m){
+  const used=new Set([fmt(h,m)]);const res=[];let t=0;
+  while(res.length<3&&t<200){t++;const x=randTime();const k=fmt(x.h,x.m);if(!used.has(k)){used.add(k);res.push(x);}}
+  return res;
+}
+
+function nextQ(){
+  answered=false;
+  document.getElementById('fb').textContent='';
+  document.getElementById('fb').style.color='';
+  document.getElementById('nxtbtn').classList.remove('show');
+  const t=randTime();curH=t.h;curM=t.m;
+  drawClock(curH,curM);
+  document.getElementById('qtxt').textContent='這個時鐘顯示幾點幾分？';
+  const choices=shuffle([{h:curH,m:curM},...genWrongs(curH,curM)]);
+  const od=document.getElementById('opts');od.innerHTML='';
+  choices.forEach(c=>{
+    const b=document.createElement('button');
+    b.className='obtn';b.textContent=fmt(c.h,c.m);
+    b.onclick=()=>check(c.h,c.m,b);od.appendChild(b);
+  });
+}
+
+async function check(h,m,btn){
+  if(answered)return;
+  await unlockAudio(); // ← 在使用者點擊的當下立刻解鎖，iOS 才認
+  answered=true;tc++;
+  document.getElementById('tc').textContent=tc;
+  const fb=document.getElementById('fb');
+  if(h===curH&&m===curM){
+    btn.classList.add('correct');
+    fb.style.color='#3B6D11';fb.textContent='✓ 答對了！';
+    cc++;document.getElementById('cc').textContent=cc;
     playCorrect();
   } else {
-    fb.style.color='#993C1D';
-    fb.textContent='再試試！正確答案是 '+(targetH%12||12)+':'+String(targetM).padStart(2,'0');
-    hourAngle = targetHourAngle(targetH, targetM);
-    minAngle = targetMinAngle(targetM);
+    btn.classList.add('wrong');
+    fb.style.color='#A32D2D';fb.textContent='✗ 答案是 '+fmt(curH,curM);
+    document.querySelectorAll('.obtn').forEach(b=>{
+      if(b.textContent===fmt(curH,curM))b.classList.add('correct');
+    });
     playWrong();
   }
-  draw();
+  document.getElementById('nxtbtn').classList.add('show');
 }
 
-const times=[];
-for(let h=1;h<=12;h++){times.push([h,0]);times.push([h,30]);}
-let lastIdx=-1;
-
-function newQuestion() {
-  answered=false;
-  document.getElementById('feedback').textContent='';
-  let idx;
-  do{idx=Math.floor(Math.random()*times.length);}while(idx===lastIdx);
-  lastIdx=idx;
-  [targetH,targetM]=times[idx];
-  document.getElementById('target-time').textContent=(targetH%12||12)+':'+String(targetM).padStart(2,'0');
-  let wrongH = ((targetH+2)%12)||12;
-  hourAngle = targetHourAngle(wrongH, 0);
-  minAngle = targetM===0 ? targetMinAngle(30) : targetMinAngle(0);
-  draw();
-}
-
-newQuestion();
+applyBtnStyles(1);
+nextQ();
 </script>
 </body>
 </html>
